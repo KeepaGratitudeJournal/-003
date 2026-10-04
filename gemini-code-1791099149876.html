@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>時光重塑：重新賦予過去意義</title>
+  <style>
+    :root {
+      --primary: #5b7c99;
+      --bg: #f7f9fa;
+      --card: #ffffff;
+      --text: #333333;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+      margin: 0;
+    }
+    .container {
+      background: var(--card);
+      max-width: 600px;
+      width: 100%;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-top: 0;
+      color: var(--primary);
+      text-align: center;
+    }
+    p.intro {
+      font-size: 0.95rem;
+      color: #666;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .step {
+      margin-top: 24px;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 16px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 14px 20px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .option-btn {
+      background: #f0f4f8;
+      color: #2c3e50;
+      text-align: left;
+      margin-bottom: 12px;
+      border: 1px solid #d3e0ea;
+      line-height: 1.5;
+    }
+    .option-btn:hover {
+      background: #e2ecf5;
+    }
+    .hidden {
+      display: none;
+    }
+    .result-box {
+      background: #f4f8f6;
+      border-left: 4px solid #4a9d77;
+      padding: 18px;
+      border-radius: 4px;
+      margin-top: 20px;
+      line-height: 1.8;
+      font-size: 1rem;
+    }
+    .loading {
+      text-align: center;
+      color: #888;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>時光重塑・賦予新生</h1>
+  <p class="intro">無論經歷是悲是喜，都是生命中獨特的印記。寫下一段過去的經驗，讓我們換個視角，看見當中潛藏的力量與感恩之處。</p>
+
+  <!-- 步驟 1: 輸入經歷 -->
+  <div id="step-input" class="step">
+    <label for="eventText">請簡述一件過去讓你感到受挫、遺憾或難以釋懷的經歷：</label>
+    <textarea id="eventText" rows="5" placeholder="寫下當時發生的事情與心裡的感受..."></textarea>
+    <button onclick="generateReframingQuestion()">生成重新詮釋的視角</button>
+    <div id="loading1" class="loading hidden">正在梳理故事，尋找新的光芒...</div>
+  </div>
+
+  <!-- 步驟 2: 選擇題引導 -->
+  <div id="step-question" class="step hidden">
+    <h3 id="questionPrompt">如果從另一個角度看這件事，你覺得哪種收穫對現在的你最有意義？</h3>
+    <div id="optionsContainer"></div>
+    <div id="loading2" class="loading hidden">正在統整你的體悟...</div>
+  </div>
+
+  <!-- 步驟 3: 總結與感恩賦權 -->
+  <div id="step-result" class="step hidden">
+    <h3>重新定義的力量</h3>
+    <div class="result-box" id="reflectionResult"></div>
+    <button onclick="resetFlow()" style="margin-top: 20px;">再練習一次</button>
+  </div>
+</div>
+
+<script>
+  // 已經自動帶入你的專屬 Cloudflare Worker 中繼網址
+  const WORKER_URL = "https://green-term-0f04.siweili60.workers.dev";
+
+  let currentEvent = "";
+
+  async function callAI(promptText) {
+    const res = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: promptText })
+    });
+    
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "服務連線異常");
+    }
+    
+    const data = await res.json();
+    return data.text;
+  }
+
+  async function generateReframingQuestion() {
+    currentEvent = document.getElementById("eventText").value.trim();
+    if (!currentEvent) return alert("請先寫下你的經歷");
+
+    document.getElementById("loading1").classList.remove("hidden");
+
+    const prompt = `
+你是一位擅長正向心理學與認知重塑的引導師。
+使用者分享了一段過去的經歷：
+"${currentEvent}"
+
+請設計一題「引導使用者重新賦予過去正向意義與感恩力量」的單選題。
+包含 3 個不同的賦權/感恩視角選項（例如：個人韌性的鍛鍊、身邊隱藏的支持與善意、促成未來轉機的契機）。
+
+請嚴格只輸出以下格式的 JSON，不要附加任何 Markdown 格式或額外文字：
+{
+  "question": "引導問題題目",
+  "options": [
+    {"label": "選項A文字描述"},
+    {"label": "選項B文字描述"},
+    {"label": "選項C文字描述"}
+  ]
+}
+`;
+
+    try {
+      const response = await callAI(prompt);
+      const cleanJson = response.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      document.getElementById("questionPrompt").innerText = parsed.question;
+      const container = document.getElementById("optionsContainer");
+      container.innerHTML = "";
+
+      parsed.options.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.innerText = opt.label;
+        btn.onclick = () => selectOption(opt.label);
+        container.appendChild(btn);
+      });
+
+      document.getElementById("step-input").classList.add("hidden");
+      document.getElementById("step-question").classList.remove("hidden");
+    } catch (e) {
+      alert("連線生成失敗，原因：" + e.message);
+    } finally {
+      document.getElementById("loading1").classList.add("hidden");
+    }
+  }
+
+  async function selectOption(selectedOption) {
+    document.getElementById("loading2").classList.remove("hidden");
+
+    const prompt = `
+使用者過去的經歷："${currentEvent}"
+使用者選擇了用這個視角來重新看待這件事："${selectedOption}"
+
+請以溫暖、同理、賦權且充滿感恩的語氣（約 150-200 字），為使用者撰寫一段「意義重塑總結」：
+1. 肯定這段經歷的獨特性與使用者的成長。
+2. 強調這段過去如何成為他生命中獨特的力量或學會珍惜的契機。
+3. 語氣真誠溫和，避免過度空洞的心靈雞湯。
+`;
+
+    try {
+      const resultText = await callAI(prompt);
+      document.getElementById("reflectionResult").innerText = resultText;
+      document.getElementById("step-question").classList.add("hidden");
+      document.getElementById("step-result").classList.remove("hidden");
+    } catch (e) {
+      alert("統整失敗，請稍後再試。");
+    } finally {
+      document.getElementById("loading2").classList.add("hidden");
+    }
+  }
+
+  function resetFlow() {
+    document.getElementById("eventText").value = "";
+    document.getElementById("step-result").classList.add("hidden");
+    document.getElementById("step-input").classList.remove("hidden");
+  }
+</script>
+
+</body>
+</html>
